@@ -4,6 +4,8 @@ Browser-based tooling for inspecting sliced FDM G-code, detecting unsupported ov
 
 The app is built with Vite, React, and TypeScript. Uploaded files stay local to the browser; no cloud upload is required. In local development, the Vite dev server also exposes an optional helper endpoint that can save generated output into `public/demo/`.
 
+Based on the *Wave Overhangs* strategy, as described by J. A. Andersons et al. in the manuscript *"Wave-inspired path-planning for support-free horizontal overhangs in FDM"*, currently under review for Additive Manufacturing Letters.
+
 ## Current capabilities
 
 - Open a local `.gcode` or `.txt` toolpath by file picker or drag-and-drop, or load the bundled demo sample.

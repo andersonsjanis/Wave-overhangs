@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 
 interface FileDropZoneProps {
   onFileSelected: (file: File) => void;
@@ -15,6 +15,13 @@ export function FileDropZone({
 }: FileDropZoneProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showDemoTip, setShowDemoTip] = useState(true);
+
+  useEffect(() => {
+    if (hasLoadedData) {
+      setShowDemoTip(false);
+    }
+  }, [hasLoadedData]);
 
   const handleFiles = (files: FileList | null) => {
     const file = files?.[0];
@@ -66,19 +73,40 @@ export function FileDropZone({
         <button
           type="button"
           className="button button--primary"
-          onClick={() => inputRef.current?.click()}
+          onClick={() => {
+            setShowDemoTip(false);
+            inputRef.current?.click();
+          }}
           disabled={isBusy}
         >
           Choose file
         </button>
-        <button
-          type="button"
-          className="button"
-          onClick={onLoadDemo}
-          disabled={isBusy}
-        >
-          {hasLoadedData ? 'Replace with demo sample' : 'Load demo sample'}
-        </button>
+        <div className="drop-zone__demo-wrapper">
+          {showDemoTip ? (
+            <div className="demo-tip" role="note" aria-live="polite">
+              <span>Try the demo sample first time</span>
+              <button
+                type="button"
+                className="demo-tip__dismiss"
+                aria-label="Dismiss demo sample tip"
+                onClick={() => setShowDemoTip(false)}
+              >
+                x
+              </button>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              setShowDemoTip(false);
+              onLoadDemo();
+            }}
+            disabled={isBusy}
+          >
+            {hasLoadedData ? 'Replace with demo sample' : 'Load demo sample'}
+          </button>
+        </div>
       </div>
       <input
         ref={inputRef}

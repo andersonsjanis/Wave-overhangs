@@ -21,6 +21,10 @@ interface ControlPanelProps {
   onShowTravelMovesChange: (value: boolean) => void;
   showPoints: boolean;
   onShowPointsChange: (value: boolean) => void;
+  alwaysShowWavePaths: boolean;
+  onAlwaysShowWavePathsChange: (value: boolean) => void;
+  layerAlpha: number;
+  onLayerAlphaChange: (value: number) => void;
   waveGuideLayerIndex: number | null;
   hasWavePathPlan: boolean;
   wavePathCount: number;
@@ -68,6 +72,10 @@ export function ControlPanel({
   onShowTravelMovesChange,
   showPoints,
   onShowPointsChange,
+  alwaysShowWavePaths,
+  onAlwaysShowWavePathsChange,
+  layerAlpha,
+  onLayerAlphaChange,
   waveGuideLayerIndex,
   hasWavePathPlan,
   wavePathCount,
@@ -111,6 +119,12 @@ export function ControlPanel({
         <p className="panel__subtitle">
           Upload a sliced FDM `.gcode` file, inspect layers, and highlight
           segments that look under-supported relative to the previous layer.
+        </p>
+        <p className="small-note panel__disclaimer">
+          Based on the <em>Wave Overhangs</em> strategy, as described by J. A.
+          Andersons et al. in the manuscript{' '}
+          <em>"Wave-inspired path-planning for support-free horizontal overhangs in FDM"</em>,
+          {' '}currently under review for Additive Manufacturing Letters.
         </p>
       </header>
 
@@ -217,32 +231,6 @@ export function ControlPanel({
                 }}
               />
             </label>
-            <div className="checkbox-list">
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={showPreviousLayer}
-                  onChange={(event) => onShowPreviousLayerChange(event.target.checked)}
-                />
-                <span>Show previous layer ghost</span>
-              </label>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={showTravelMoves}
-                  onChange={(event) => onShowTravelMovesChange(event.target.checked)}
-                />
-                <span>Show travel moves</span>
-              </label>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={showPoints}
-                  onChange={(event) => onShowPointsChange(event.target.checked)}
-                />
-                <span>Show points</span>
-              </label>
-            </div>
             {currentLayer ? (
               <p className="layer-caption">
                 {viewMode === '2d'
@@ -402,12 +390,8 @@ export function ControlPanel({
                           Latest wavefront: W_i
                         </span>
                         <span className="legend__item">
-                          <span className="legend__swatch legend__swatch--wave-previous" />
-                          Previous wavefront: W_(i-1)
-                        </span>
-                        <span className="legend__item">
-                          <span className="legend__swatch legend__swatch--wave-older" />
-                          Older wavefront history
+                          <span className="legend__swatch legend__swatch--wave-history" />
+                          Earlier wavefronts: W_(i-1), W_(i-2), ...
                         </span>
                       </>
                     ) : null}
@@ -571,6 +555,73 @@ export function ControlPanel({
                 <p className="small-note">
                   Print-move extrusion uses E = A_bead * l / (pi * (d_nozzle / 2)^2).
                   Each travel move is wrapped by retraction and unretraction.
+                </p>
+              </div>
+            </details>
+            <details className="parameter-disclosure">
+              <summary>Visual settings</summary>
+              <div className="parameter-disclosure__content">
+                <p className="small-note">
+                  Adjust what the viewer emphasizes in the 2D layer view and the 3D stack.
+                </p>
+                <label className="control">
+                  <span>Layer alpha ({Math.round(layerAlpha * 100)}%)</span>
+                  <input
+                    type="range"
+                    min={0.05}
+                    max={1}
+                    step={0.01}
+                    value={layerAlpha}
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      if (Number.isFinite(value)) {
+                        onLayerAlphaChange(Math.min(1, Math.max(0.05, value)));
+                      }
+                    }}
+                  />
+                </label>
+                <p className="small-note">
+                  This controls the opacity of non-selected layers in the 3D stack view.
+                </p>
+                <div className="checkbox-list">
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={showPreviousLayer}
+                      onChange={(event) => onShowPreviousLayerChange(event.target.checked)}
+                    />
+                    <span>Show previous layer ghost</span>
+                  </label>
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={showTravelMoves}
+                      onChange={(event) => onShowTravelMovesChange(event.target.checked)}
+                    />
+                    <span>Show travel moves</span>
+                  </label>
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={showPoints}
+                      onChange={(event) => onShowPointsChange(event.target.checked)}
+                    />
+                    <span>Show points</span>
+                  </label>
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={alwaysShowWavePaths}
+                      onChange={(event) =>
+                        onAlwaysShowWavePathsChange(event.target.checked)
+                      }
+                    />
+                    <span>Always show wave paths</span>
+                  </label>
+                </div>
+                <p className="small-note">
+                  Keep generated wave paths visible in blue even after switching to a
+                  different layer so the full part preview shows every resolved wave plan.
                 </p>
               </div>
             </details>

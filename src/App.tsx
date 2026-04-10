@@ -34,6 +34,8 @@ export default function App() {
   const [showPreviousLayer, setShowPreviousLayer] = useState(true);
   const [showTravelMoves, setShowTravelMoves] = useState(false);
   const [showPoints, setShowPoints] = useState(true);
+  const [alwaysShowWavePaths, setAlwaysShowWavePaths] = useState(false);
+  const [layerAlpha, setLayerAlpha] = useState(0.17);
   const [waveGuideLayerIndex, setWaveGuideLayerIndex] = useState<number | null>(null);
   const [wavePathPlans, setWavePathPlans] = useState<Record<number, WavePathPlan>>({});
   const [wavePathSettings, setWavePathSettings] = useState<WavePathSettings>(
@@ -136,6 +138,12 @@ export default function App() {
   const generatedWavePlanCount = Object.values(wavePathPlans).filter(
     (plan) => plan.wavefronts.length > 0
   ).length;
+  const resolvedLayerIndexes = new Set(
+    Object.values(wavePathPlans)
+      .filter((plan) => plan.wavefronts.length > 0)
+      .map((plan) => plan.layerIndex)
+  );
+  const currentLayerHasResolvedWavePath = resolvedLayerIndexes.has(selectedLayerIndex);
 
   const handleGenerateWaveGuide = (layerIndex: number) => {
     setWaveGuideLayerIndex(layerIndex);
@@ -290,6 +298,10 @@ export default function App() {
         onShowTravelMovesChange={setShowTravelMoves}
         showPoints={showPoints}
         onShowPointsChange={setShowPoints}
+        alwaysShowWavePaths={alwaysShowWavePaths}
+        onAlwaysShowWavePathsChange={setAlwaysShowWavePaths}
+        layerAlpha={layerAlpha}
+        onLayerAlphaChange={setLayerAlpha}
         waveGuideLayerIndex={waveGuideLayerIndex}
         hasWavePathPlan={Boolean(currentWavePathPlan)}
         wavePathCount={currentWavePathPlan?.wavefronts.length ?? 0}
@@ -375,9 +387,13 @@ export default function App() {
             showPreviousLayer={showPreviousLayer}
             showTravelMoves={showTravelMoves}
             showPoints={showPoints}
+            hasResolvedWavePath={currentLayerHasResolvedWavePath}
             showWaveGuide={waveGuideLayerIndex === selectedLayerIndex}
             wavePathPlan={
               waveGuideLayerIndex === selectedLayerIndex ? currentWavePathPlan : null
+            }
+            persistentWavePathPlan={
+              alwaysShowWavePaths ? currentWavePathPlan : null
             }
             resetToken={resetToken}
           />
@@ -389,12 +405,15 @@ export default function App() {
             onLayerSelect={(layerIndex) =>
               setSelectedLayerIndex(Math.min(Math.max(layerIndex, 0), maxLayerIndex))
             }
+            layerAlpha={layerAlpha}
+            resolvedLayerIndexes={resolvedLayerIndexes}
             showPreviousLayer={showPreviousLayer}
             showTravelMoves={showTravelMoves}
             showWaveGuide={waveGuideLayerIndex === selectedLayerIndex}
             wavePathPlan={
               waveGuideLayerIndex === selectedLayerIndex ? currentWavePathPlan : null
             }
+            persistentWavePathPlans={alwaysShowWavePaths ? wavePathPlans : {}}
             resetToken={resetToken}
           />
         )}

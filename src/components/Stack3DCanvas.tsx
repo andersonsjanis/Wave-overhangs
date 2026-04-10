@@ -23,10 +23,13 @@ interface Stack3DCanvasProps {
   currentLayer: AnalyzedLayerData | null;
   selectedLayerIndex: number;
   onLayerSelect: (layerIndex: number) => void;
+  layerAlpha: number;
+  resolvedLayerIndexes: ReadonlySet<number>;
   showPreviousLayer: boolean;
   showTravelMoves: boolean;
   showWaveGuide: boolean;
   wavePathPlan: WavePathPlan | null;
+  persistentWavePathPlans: Record<number, WavePathPlan>;
   resetToken: number;
 }
 
@@ -88,8 +91,13 @@ const INITIAL_ORBIT_VIEW: OrbitViewState = {
 
 const WAVEFRONT_RENDER_STYLES = {
   latest: { color: '#d72670', width: 2.2, alpha: 0.98 },
-  previous: { color: '#0b8ed9', width: 1.9, alpha: 0.9 },
-  older: { color: '#708090', width: 1.5, alpha: 0.52 }
+  history: { color: '#0b8ed9', width: 1.9, alpha: 0.9 }
+} as const;
+
+const PERSISTENT_WAVE_RENDER_STYLE = {
+  color: '#0b8ed9',
+  width: 1.9,
+  alpha: 0.94
 } as const;
 
 function wavefrontRenderStyle(index: number, total: number) {
@@ -97,11 +105,7 @@ function wavefrontRenderStyle(index: number, total: number) {
     return WAVEFRONT_RENDER_STYLES.latest;
   }
 
-  if (index === total - 2) {
-    return WAVEFRONT_RENDER_STYLES.previous;
-  }
-
-  return WAVEFRONT_RENDER_STYLES.older;
+  return WAVEFRONT_RENDER_STYLES.history;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -185,10 +189,13 @@ export function Stack3DCanvas({
   currentLayer,
   selectedLayerIndex,
   onLayerSelect,
+  layerAlpha,
+  resolvedLayerIndexes,
   showPreviousLayer,
   showTravelMoves,
   showWaveGuide,
   wavePathPlan,
+  persistentWavePathPlans,
   resetToken
 }: Stack3DCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -314,7 +321,11 @@ export function Stack3DCanvas({
     };
 
     const addPolygonHighlight = (layer: AnalyzedLayerData) => {
-      if (layer.overhangArea <= 0 || layer.overhangRegion.length === 0) {
+      if (
+        resolvedLayerIndexes.has(layer.index) ||
+        layer.overhangArea <= 0 ||
+        layer.overhangRegion.length === 0
+      ) {
         return;
       }
 
@@ -336,9 +347,9 @@ export function Stack3DCanvas({
 
       polygons.push({
         rings,
-        fill: isSelected ? '#fff200' : '#d9df00',
-        stroke: isSelected ? '#a0a400' : '#b8bf00',
-        fillAlpha: isSelected ? 0.46 : 0.38,
+        fill: isSelected ? '#f87171' : '#fca5a5',
+        stroke: isSelected ? '#b91c1c' : '#dc2626',
+        fillAlpha: isSelected ? 0.34 : 0.26,
         strokeAlpha: isSelected ? 0.98 : 0.9,
         strokeWidth: isSelected ? 2.4 : 1.8
       });
@@ -352,21 +363,33 @@ export function Stack3DCanvas({
     for (const layer of data.layers) {
       const isSelected = layer.index === selectedLayerIndex;
       const isPrevious = layer.index === selectedLayerIndex - 1;
+      const isResolved = resolvedLayerIndexes.has(layer.index);
+      const persistentWavePathPlan = persistentWavePathPlans[layer.index] ?? null;
+      const hasPersistentWavePath = Boolean(
+        persistentWavePathPlan?.wavefronts.length
+      );
+      const hasActiveWavePathPlan =
+        isSelected && Boolean(wavePathPlan?.wavefronts.length);
+      const hideOriginalOverhangPaths =
+        isSelected &&
+        (showWaveGuide || hasActiveWavePathPlan || hasPersistentWavePath);
 
       addPolygonHighlight(layer);
 
       if (isSelected) {
         addSegments(
-          layer.extrusionSegments.flatMap((segment) => segment.normalParts),
+          hideOriginalOverhangPaths || !isResolved
+            ? layer.extrusionSegments.flatMap((segment) => segment.normalParts)
+            : layer.extrusionSegments,
           layer.z,
           { color: '#176b87', width: 2.4, alpha: 1 }
         );
 
-        if (!wavePathPlan) {
+        if (!hideOriginalOverhangPaths && !isResolved) {
           addSegments(
             layer.extrusionSegments.flatMap((segment) => segment.overhangParts),
             layer.z,
-            { color: '#d8572a', width: 3, alpha: 0.96 }
+            { color: '#dc2626', width: 3, alpha: 0.96 }
           );
         }
 
@@ -379,10 +402,24 @@ export function Stack3DCanvas({
           });
         }
       } else {
-        addSegments(sampleSegments(layer.extrusionSegments), layer.z, {
+        addSegments(
+          sampleSegments(
+            hasPersistentWavePath
+              ? layer.extrusionSegments.flatMap((segment) => segment.normalParts)
+              : layer.extrusionSegments
+          ),
+          layer.z,
+          {
           color: isPrevious && showPreviousLayer ? '#7ea0b3' : '#7f919b',
           width: isPrevious && showPreviousLayer ? 1.45 : 1.05,
-          alpha: isPrevious && showPreviousLayer ? 0.5 : 0.17
+          alpha: isPrevious && showPreviousLayer ? Math.min(1, layerAlpha + 0.33) : layerAlpha
+          }
+        );
+      }
+
+      if (hasPersistentWavePath && (!isSelected || !hasActiveWavePathPlan)) {
+        persistentWavePathPlan.wavefronts.forEach((wavefront) => {
+          addSegments(wavefront.segments, layer.z, PERSISTENT_WAVE_RENDER_STYLE);
         });
       }
     }
@@ -420,7 +457,10 @@ export function Stack3DCanvas({
     showPreviousLayer,
     showTravelMoves,
     showWaveGuide,
-    wavePathPlan
+    wavePathPlan,
+    persistentWavePathPlans,
+    layerAlpha,
+    resolvedLayerIndexes
   ]);
 
   const projectedCallouts = useMemo(() => {

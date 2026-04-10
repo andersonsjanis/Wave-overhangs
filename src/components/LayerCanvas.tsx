@@ -24,8 +24,10 @@ interface LayerCanvasProps {
   showPreviousLayer: boolean;
   showTravelMoves: boolean;
   showPoints: boolean;
+  hasResolvedWavePath: boolean;
   showWaveGuide: boolean;
   wavePathPlan: WavePathPlan | null;
+  persistentWavePathPlan: WavePathPlan | null;
   resetToken: number;
 }
 
@@ -48,8 +50,13 @@ const INITIAL_VIEW: ViewState = {
 
 const WAVEFRONT_RENDER_STYLES = {
   latest: { color: '#d72670', width: 2.2, alpha: 0.98 },
-  previous: { color: '#0b8ed9', width: 1.9, alpha: 0.9 },
-  older: { color: '#708090', width: 1.5, alpha: 0.52 }
+  history: { color: '#0b8ed9', width: 1.9, alpha: 0.9 }
+} as const;
+
+const PERSISTENT_WAVE_RENDER_STYLE = {
+  color: '#0b8ed9',
+  width: 2.1,
+  alpha: 0.95
 } as const;
 
 function wavefrontRenderStyle(index: number, total: number) {
@@ -57,11 +64,7 @@ function wavefrontRenderStyle(index: number, total: number) {
     return WAVEFRONT_RENDER_STYLES.latest;
   }
 
-  if (index === total - 2) {
-    return WAVEFRONT_RENDER_STYLES.previous;
-  }
-
-  return WAVEFRONT_RENDER_STYLES.older;
+  return WAVEFRONT_RENDER_STYLES.history;
 }
 
 export function LayerCanvas({
@@ -70,8 +73,10 @@ export function LayerCanvas({
   showPreviousLayer,
   showTravelMoves,
   showPoints,
+  hasResolvedWavePath,
   showWaveGuide,
   wavePathPlan,
+  persistentWavePathPlan,
   resetToken
 }: LayerCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -173,6 +178,14 @@ export function LayerCanvas({
       x: (x - centerX) * scale + width / 2 + view.panX,
       y: height / 2 - (y - centerY) * scale + view.panY
     });
+    const hasActiveWavePathPlan = Boolean(wavePathPlan?.wavefronts.length);
+    const hasPersistentWavePathPlan = Boolean(
+      persistentWavePathPlan?.wavefronts.length
+    );
+    const isShowingPersistentWavePaths =
+      hasPersistentWavePathPlan && !hasActiveWavePathPlan;
+    const hideOriginalOverhangPaths =
+      showWaveGuide || hasActiveWavePathPlan || isShowingPersistentWavePaths;
 
     const drawSegments = (
       segments: Array<{ x1: number; y1: number; x2: number; y2: number }>,
@@ -343,10 +356,12 @@ export function LayerCanvas({
       });
     }
 
-    drawPolygons(currentLayer.overhangRegion, {
-      color: '#d8572a',
-      alpha: 0.14
-    });
+    if (!hasResolvedWavePath) {
+      drawPolygons(currentLayer.overhangRegion, {
+        color: '#d8572a',
+        alpha: 0.14
+      });
+    }
 
     if (showPreviousLayer && previousLayer) {
       drawSegments(previousLayer.extrusionSegments, {
@@ -357,14 +372,16 @@ export function LayerCanvas({
     }
 
     drawSegments(
-      currentLayer.extrusionSegments.flatMap((segment) => segment.normalParts),
+      hideOriginalOverhangPaths || !hasResolvedWavePath
+        ? currentLayer.extrusionSegments.flatMap((segment) => segment.normalParts)
+        : currentLayer.extrusionSegments,
       {
         color: '#176b87',
         width: 2.25
       }
     );
 
-    if (!wavePathPlan) {
+    if (!hideOriginalOverhangPaths && !hasResolvedWavePath) {
       drawSegments(
         currentLayer.extrusionSegments.flatMap((segment) => segment.overhangParts),
         {
@@ -394,21 +411,32 @@ export function LayerCanvas({
           alpha: style.alpha
         });
       });
+    } else if (isShowingPersistentWavePaths && persistentWavePathPlan) {
+      persistentWavePathPlan.wavefronts.forEach((wavefront) => {
+        drawSegments(wavefront.segments, PERSISTENT_WAVE_RENDER_STYLE);
+      });
     }
 
-    if (showPoints && !showWaveGuide && !wavePathPlan) {
+    if (
+      showPoints &&
+      !showWaveGuide &&
+      !hasActiveWavePathPlan &&
+      !isShowingPersistentWavePaths
+    ) {
       drawPoints(currentLayer.extrusionSegments, {
         color: '#0f4f66',
         radius: 2.8
       });
 
-      drawPoints(
-        currentLayer.extrusionSegments.filter((segment) => segment.isCandidateOverhang),
-        {
-          color: '#b8441e',
-          radius: 3.2
-        }
-      );
+      if (!hasResolvedWavePath) {
+        drawPoints(
+          currentLayer.extrusionSegments.filter((segment) => segment.isCandidateOverhang),
+          {
+            color: '#b8441e',
+            radius: 3.2
+          }
+        );
+      }
 
       if (showTravelMoves) {
         drawPoints(currentLayer.travelSegments, {
@@ -435,8 +463,10 @@ export function LayerCanvas({
     showPoints,
     showPreviousLayer,
     showTravelMoves,
+    hasResolvedWavePath,
     showWaveGuide,
     wavePathPlan,
+    persistentWavePathPlan,
     view
   ]);
 
