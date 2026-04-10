@@ -297,7 +297,7 @@ export function Stack3DCanvas({
     const toModelPoint = (x: number, y: number, z: number): ModelPoint3D => ({
       x: x - modelInfo.centerX,
       y: y - modelInfo.centerY,
-      z: (z - modelInfo.centerZ) * modelInfo.zScale
+      z: (modelInfo.centerZ - z) * modelInfo.zScale
     });
 
     const addSegments = (
@@ -439,7 +439,7 @@ export function Stack3DCanvas({
       return {
         layerIndex: callout.layerIndex,
         left: projectedAnchor.x * scale + canvasSize.width / 2 + view.panX,
-        top: projectedAnchor.y * scale + canvasSize.height / 2 + view.panY - 18,
+        top: canvasSize.height / 2 - projectedAnchor.y * scale + view.panY - 18,
         depth: projectedAnchor.depth
       };
     });
@@ -503,7 +503,7 @@ export function Stack3DCanvas({
     const depthRange = Math.max(maxDepth - minDepth, 0.0001);
     const toScreen = (point: ProjectedPoint3D) => ({
       x: point.x * scale + width / 2 + view.panX,
-      y: point.y * scale + height / 2 + view.panY
+      y: height / 2 - point.y * scale + view.panY
     });
 
     const floor = [
@@ -629,7 +629,7 @@ export function Stack3DCanvas({
       return {
         x: x - resolvedModelInfo.centerX,
         y: y - resolvedModelInfo.centerY,
-        z: (z - resolvedModelInfo.centerZ) * resolvedModelInfo.zScale
+        z: (resolvedModelInfo.centerZ - z) * resolvedModelInfo.zScale
       };
     }
   }, [canvasSize, currentLayer, data, modelInfo, modelRadius, scene, selectedLayerIndex, view]);

@@ -29,7 +29,7 @@ interface ExportStatusMessage {
 
 export default function App() {
   const [data, setData] = useState<AnalyzedGcode | null>(null);
-  const [viewMode, setViewMode] = useState<ViewerMode>('2d');
+  const [viewMode, setViewMode] = useState<ViewerMode>('3d');
   const [selectedLayerIndex, setSelectedLayerIndex] = useState(0);
   const [showPreviousLayer, setShowPreviousLayer] = useState(true);
   const [showTravelMoves, setShowTravelMoves] = useState(false);

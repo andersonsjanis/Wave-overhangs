@@ -15,14 +15,14 @@ export const DEFAULT_OVERHANG_SETTINGS: OverhangSettings = {
 };
 
 export const DEFAULT_WAVE_PATH_SETTINGS: WavePathSettings = {
-  wavelength: 0.35,
+  wavelength: 1,
   discretizationDistance: 0.35,
   iterationLimit: 80,
   minAddedCells: 1,
   fidelity: 'medium',
-  rasterSubdivisions: 1,
-  waveBufferQuadrantSegments: 16,
-  wavePropagationModel: 'raster'
+  rasterSubdivisions: 4,
+  waveBufferQuadrantSegments: 4,
+  wavePropagationModel: 'huygens'
 };
 
 export const DEFAULT_GCODE_EXPORT_SETTINGS: GcodeExportSettings = {
